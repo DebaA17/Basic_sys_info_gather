@@ -47,6 +47,3 @@ git clone https://github.com/DebaA17/Basic_sys_info_gather.git
 cd Basic_sys_info_gather
 pip3 install -r requirements.txt
 
-
----
-
